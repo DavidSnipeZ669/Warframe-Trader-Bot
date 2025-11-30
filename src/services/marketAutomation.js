@@ -159,6 +159,13 @@ class MarketAutomationService {
         if (!existingOrder && item.quantity > 0) {
           // Get item info to get the item_id
           const itemInfo = await warframeMarket.getItemInfo(item.urlName);
+          
+          // Safety check for items_in_set
+          if (!itemInfo || !itemInfo.items_in_set || itemInfo.items_in_set.length === 0) {
+            logger.warn(`Could not find item ID for ${item.urlName}`);
+            continue;
+          }
+          
           const itemId = itemInfo.items_in_set[0].id;
 
           // Create sell order
@@ -211,6 +218,12 @@ class MarketAutomationService {
     try {
       const analysis = await priceAnalysisService.analyzeItem(urlName);
       const itemInfo = await warframeMarket.getItemInfo(urlName);
+      
+      // Safety check for items_in_set
+      if (!itemInfo || !itemInfo.items_in_set || itemInfo.items_in_set.length === 0) {
+        throw new Error(`Could not find item ID for ${urlName}`);
+      }
+      
       const itemId = itemInfo.items_in_set[0].id;
 
       // Use optimal buy price or max price, whichever is lower
