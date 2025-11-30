@@ -35,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const tradesRemaining = document.getElementById('trades-remaining');
   const masteryRank = document.getElementById('mastery-rank');
 
+  // Capital Elements
+  const platinumAmount = document.getElementById('platinum-amount');
+  const creditsAmount = document.getElementById('credits-amount');
+
   // Confirm Modal Elements
   const confirmModal = document.getElementById('confirm-modal');
   const confirmMessage = document.getElementById('confirm-message');
@@ -54,6 +58,71 @@ document.addEventListener('DOMContentLoaded', () => {
   checkBotStatus();
   setupConfirmModal();
   initTradesTracker();
+  initCapitalTracker();
+
+  // Capital Tracker Functions
+  async function initCapitalTracker() {
+    // Load capital from file
+    try {
+      const capital = await window.api.capital.get();
+      platinumAmount.value = capital.platinum || 0;
+      creditsAmount.value = capital.credits || 0;
+    } catch (error) {
+      console.error('Error loading capital:', error);
+      platinumAmount.value = 0;
+      creditsAmount.value = 0;
+    }
+    
+    // Listen for platinum changes
+    platinumAmount.addEventListener('change', async () => {
+      const value = Math.max(0, parseInt(platinumAmount.value) || 0);
+      platinumAmount.value = value;
+      try {
+        await window.api.capital.setPlatinum(value);
+      } catch (error) {
+        console.error('Error saving platinum:', error);
+      }
+    });
+    
+    // Listen for credits changes
+    creditsAmount.addEventListener('change', async () => {
+      const value = Math.max(0, parseInt(creditsAmount.value) || 0);
+      creditsAmount.value = value;
+      try {
+        await window.api.capital.setCredits(value);
+      } catch (error) {
+        console.error('Error saving credits:', error);
+      }
+    });
+  }
+
+  // Expose capital update functions for external use (e.g., after trades)
+  window.updatePlatinum = async function(amount) {
+    platinumAmount.value = amount;
+    try {
+      await window.api.capital.setPlatinum(amount);
+    } catch (error) {
+      console.error('Error updating platinum:', error);
+    }
+  };
+
+  window.addPlatinum = async function(amount, reason = '') {
+    try {
+      const capital = await window.api.capital.addPlatinum(amount, reason);
+      platinumAmount.value = capital.platinum;
+    } catch (error) {
+      console.error('Error adding platinum:', error);
+    }
+  };
+
+  window.subtractPlatinum = async function(amount, reason = '') {
+    try {
+      const capital = await window.api.capital.subtractPlatinum(amount, reason);
+      platinumAmount.value = capital.platinum;
+    } catch (error) {
+      console.error('Error subtracting platinum:', error);
+    }
+  };
 
   // Trades Tracker Functions
   function initTradesTracker() {

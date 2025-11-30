@@ -55,6 +55,51 @@ body {
 .header-center {
   display: flex;
   align-items: center;
+  gap: 1.5rem;
+}
+
+/* Capital Tracker */
+.capital-tracker {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: var(--bg-tertiary);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.capital-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.capital-icon {
+  font-size: 1.1rem;
+}
+
+.capital-input {
+  width: 90px;
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.capital-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.capital-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .trades-tracker {

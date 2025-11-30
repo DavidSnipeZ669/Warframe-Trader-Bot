@@ -16,6 +16,17 @@ contextBridge.exposeInMainWorld('api', {
     applyRecommendedPrices: () => ipcRenderer.invoke('inventory:applyRecommendedPrices')
   },
   
+  // Capital operations
+  capital: {
+    get: () => ipcRenderer.invoke('capital:get'),
+    setPlatinum: (amount) => ipcRenderer.invoke('capital:setPlatinum', amount),
+    setCredits: (amount) => ipcRenderer.invoke('capital:setCredits', amount),
+    addPlatinum: (amount, reason) => ipcRenderer.invoke('capital:addPlatinum', amount, reason),
+    subtractPlatinum: (amount, reason) => ipcRenderer.invoke('capital:subtractPlatinum', amount, reason),
+    getHistory: (limit) => ipcRenderer.invoke('capital:getHistory', limit),
+    reset: () => ipcRenderer.invoke('capital:reset')
+  },
+  
   // Market operations
   market: {
     search: (query) => ipcRenderer.invoke('market:search', query),

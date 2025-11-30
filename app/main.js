@@ -3,6 +3,7 @@ const path = require('path');
 
 // Import services
 const inventoryService = require('../src/services/inventory');
+const capitalService = require('../src/services/capital');
 const priceAnalysisService = require('../src/services/priceAnalysis');
 const marketAutomationService = require('../src/services/marketAutomation');
 const notificationService = require('../src/services/notification');
@@ -237,4 +238,41 @@ ipcMain.handle('inventory:applyRecommendedPrices', async () => {
   }
   
   return updated;
+});
+
+// Capital Management IPC Handlers
+
+// Get current capital
+ipcMain.handle('capital:get', async () => {
+  return capitalService.getCapital();
+});
+
+// Set platinum amount
+ipcMain.handle('capital:setPlatinum', async (event, amount) => {
+  return capitalService.setPlatinum(amount);
+});
+
+// Set credits amount
+ipcMain.handle('capital:setCredits', async (event, amount) => {
+  return capitalService.setCredits(amount);
+});
+
+// Add platinum (from a sale)
+ipcMain.handle('capital:addPlatinum', async (event, amount, reason) => {
+  return capitalService.addPlatinum(amount, reason);
+});
+
+// Subtract platinum (from a purchase)
+ipcMain.handle('capital:subtractPlatinum', async (event, amount, reason) => {
+  return capitalService.subtractPlatinum(amount, reason);
+});
+
+// Get capital history
+ipcMain.handle('capital:getHistory', async (event, limit) => {
+  return capitalService.getHistory(limit);
+});
+
+// Reset capital
+ipcMain.handle('capital:reset', async () => {
+  return capitalService.reset();
 });
