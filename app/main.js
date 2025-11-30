@@ -10,6 +10,9 @@ const warframeMarket = require('../src/api/warframeMarket');
 const config = require('../src/config');
 const logger = require('../src/utils/logger');
 
+// Constants
+const RATE_LIMIT_DELAY_MS = 350; // Delay between API calls for rate limiting
+
 let mainWindow;
 
 function createWindow() {
@@ -168,4 +171,70 @@ ipcMain.handle('bot:stop', async () => {
 
 ipcMain.handle('bot:status', async () => {
   return { running: botRunning };
+});
+
+// Analyze all inventory items and return recommended prices
+ipcMain.handle('inventory:analyzeAll', async () => {
+  const items = inventoryService.getAllItems();
+  const results = [];
+  
+  for (const item of items) {
+    try {
+      const analysis = await priceAnalysisService.analyzeItem(item.urlName);
+      results.push({
+        urlName: item.urlName,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        currentMinSell: item.minSellPrice,
+        currentMaxBuy: item.maxBuyPrice,
+        recommendedSell: analysis.optimalSellPrice || analysis.lowestSell,
+        recommendedBuy: analysis.optimalBuyPrice || analysis.highestBuy,
+        lowestSell: analysis.lowestSell,
+        highestBuy: analysis.highestBuy,
+        autoList: item.autoList
+      });
+      
+      // Rate limiting delay
+      await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
+    } catch (error) {
+      logger.error(`Error analyzing ${item.urlName}:`, error.message);
+      results.push({
+        urlName: item.urlName,
+        itemName: item.itemName,
+        error: error.message
+      });
+    }
+  }
+  
+  return results;
+});
+
+// Apply recommended prices to all items
+ipcMain.handle('inventory:applyRecommendedPrices', async () => {
+  const items = inventoryService.getAllItems();
+  const updated = [];
+  
+  for (const item of items) {
+    try {
+      const analysis = await priceAnalysisService.analyzeItem(item.urlName);
+      const recSell = analysis.optimalSellPrice || analysis.lowestSell;
+      const recBuy = analysis.optimalBuyPrice || analysis.highestBuy;
+      
+      if (recSell || recBuy) {
+        inventoryService.setPriceConstraints(item.urlName, recSell, recBuy);
+        updated.push({
+          urlName: item.urlName,
+          itemName: item.itemName,
+          minSellPrice: recSell,
+          maxBuyPrice: recBuy
+        });
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
+    } catch (error) {
+      logger.error(`Error applying prices to ${item.urlName}:`, error.message);
+    }
+  }
+  
+  return updated;
 });

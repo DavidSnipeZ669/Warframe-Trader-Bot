@@ -11,7 +11,9 @@ contextBridge.exposeInMainWorld('api', {
     remove: (urlName) => ipcRenderer.invoke('inventory:remove', urlName),
     updateQuantity: (urlName, quantity) => ipcRenderer.invoke('inventory:updateQuantity', urlName, quantity),
     toggleAutoList: (urlName) => ipcRenderer.invoke('inventory:toggleAutoList', urlName),
-    setPriceConstraints: (urlName, minSell, maxBuy) => ipcRenderer.invoke('inventory:setPriceConstraints', urlName, minSell, maxBuy)
+    setPriceConstraints: (urlName, minSell, maxBuy) => ipcRenderer.invoke('inventory:setPriceConstraints', urlName, minSell, maxBuy),
+    analyzeAll: () => ipcRenderer.invoke('inventory:analyzeAll'),
+    applyRecommendedPrices: () => ipcRenderer.invoke('inventory:applyRecommendedPrices')
   },
   
   // Market operations

@@ -14,6 +14,19 @@
       <div class="header-left">
         <h1>🎮 Warframe Trader Bot</h1>
       </div>
+      <div class="header-center">
+        <div class="trades-tracker">
+          <div class="trades-count">
+            <span class="trades-icon">💱</span>
+            <span id="trades-remaining">0</span>
+            <span class="trades-label">trades left</span>
+          </div>
+          <div class="mastery-input">
+            <label for="mastery-rank">MR:</label>
+            <input type="number" id="mastery-rank" min="1" max="35" value="17" class="input-field mastery-field">
+          </div>
+        </div>
+      </div>
       <div class="header-right">
         <div class="bot-status">
           <span id="status-indicator" class="status-indicator offline"></span>
@@ -38,6 +51,19 @@
             <h3 id="selected-item-name">Selected Item</h3>
             <input type="hidden" id="selected-item-url">
             
+            <!-- Recommended Prices Display -->
+            <div id="recommended-prices" class="recommended-prices hidden">
+              <div class="price-recommendation">
+                <span class="rec-label">💰 Recommended Sell:</span>
+                <span id="rec-sell-price" class="rec-value sell">—</span>
+              </div>
+              <div class="price-recommendation">
+                <span class="rec-label">💵 Recommended Buy:</span>
+                <span id="rec-buy-price" class="rec-value buy">—</span>
+              </div>
+              <button type="button" id="use-recommended-btn" class="btn btn-secondary btn-small">Use Recommended Prices</button>
+            </div>
+            
             <div class="form-group">
               <label for="item-quantity">Quantity</label>
               <div class="quantity-control">
@@ -60,7 +86,7 @@
             <div class="form-group">
               <label class="checkbox-label">
                 <input type="checkbox" id="auto-list-checkbox" checked>
-                <span>Auto-list this item</span>
+                <span>Auto-list at recommended price</span>
               </label>
             </div>
             
@@ -109,6 +135,7 @@
         <h3 class="item-name"></h3>
         <div class="item-actions">
           <button class="btn btn-icon btn-analyze" title="Analyze prices">📊</button>
+          <button class="btn btn-icon btn-apply-rec" title="Apply recommended prices">🎯</button>
           <button class="btn btn-icon btn-remove" title="Remove item">🗑️</button>
         </div>
       </div>
@@ -143,10 +170,16 @@
       </div>
       
       <div class="item-prices hidden">
-        <span class="price-label">Market:</span>
-        <span class="lowest-sell">—</span>
-        <span class="price-separator">/</span>
-        <span class="highest-buy">—</span>
+        <div class="market-prices">
+          <span class="price-label">Market:</span>
+          <span class="lowest-sell">—</span>
+          <span class="price-separator">/</span>
+          <span class="highest-buy">—</span>
+        </div>
+        <div class="recommended-tag">
+          <span class="rec-label">Rec. Sell:</span>
+          <span class="rec-sell">—</span>
+        </div>
       </div>
     </div>
   </template>

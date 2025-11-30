@@ -1,5 +1,8 @@
 // Warframe Trader Bot - Renderer Script
 
+// Constants
+const MAX_MASTERY_RANK = 35;
+
 document.addEventListener('DOMContentLoaded', () => {
   // Elements
   const searchInput = document.getElementById('search-input');
@@ -22,6 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const qtyIncrease = document.getElementById('qty-increase');
   const itemCardTemplate = document.getElementById('item-card-template');
 
+  // Recommended Prices Elements
+  const recommendedPrices = document.getElementById('recommended-prices');
+  const recSellPrice = document.getElementById('rec-sell-price');
+  const recBuyPrice = document.getElementById('rec-buy-price');
+  const useRecommendedBtn = document.getElementById('use-recommended-btn');
+
+  // Trades Tracker Elements
+  const tradesRemaining = document.getElementById('trades-remaining');
+  const masteryRank = document.getElementById('mastery-rank');
+
   // Confirm Modal Elements
   const confirmModal = document.getElementById('confirm-modal');
   const confirmMessage = document.getElementById('confirm-message');
@@ -32,11 +45,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let searchTimeout = null;
   let inventory = [];
+  let currentRecommendedSell = null;
+  let currentRecommendedBuy = null;
+  let tradesUsedToday = 0;
 
   // Initialize
   loadInventory();
   checkBotStatus();
   setupConfirmModal();
+  initTradesTracker();
+
+  // Trades Tracker Functions
+  function initTradesTracker() {
+    // Load saved mastery rank from localStorage
+    const savedMR = localStorage.getItem('masteryRank');
+    if (savedMR) {
+      masteryRank.value = savedMR;
+    }
+    
+    // Load trades used today from localStorage
+    const savedTrades = localStorage.getItem('tradesUsedToday');
+    const savedDate = localStorage.getItem('tradesDate');
+    const today = new Date().toDateString();
+    
+    if (savedDate === today && savedTrades) {
+      tradesUsedToday = parseInt(savedTrades, 10);
+    } else {
+      // Reset if it's a new day
+      tradesUsedToday = 0;
+      localStorage.setItem('tradesDate', today);
+      localStorage.setItem('tradesUsedToday', '0');
+    }
+    
+    updateTradesDisplay();
+    
+    // Listen for mastery rank changes
+    masteryRank.addEventListener('change', () => {
+      let value = parseInt(masteryRank.value, 10) || 1;
+      value = Math.max(1, Math.min(MAX_MASTERY_RANK, value));
+      masteryRank.value = value;
+      localStorage.setItem('masteryRank', value);
+      updateTradesDisplay();
+    });
+  }
+
+  function updateTradesDisplay() {
+    const mr = parseInt(masteryRank.value, 10) || 17;
+    const remaining = Math.max(0, mr - tradesUsedToday);
+    tradesRemaining.textContent = remaining;
+    
+    // Change color based on remaining trades
+    if (remaining <= 2) {
+      tradesRemaining.style.color = 'var(--error)';
+    } else if (remaining <= 5) {
+      tradesRemaining.style.color = 'var(--warning)';
+    } else {
+      tradesRemaining.style.color = 'var(--accent-primary)';
+    }
+  }
+
+  // Expose useTrade for external calls when trades are completed
+  window.useTrade = function() {
+    tradesUsedToday++;
+    localStorage.setItem('tradesUsedToday', tradesUsedToday.toString());
+    updateTradesDisplay();
+  };
 
   // Search functionality
   searchInput.addEventListener('input', (e) => {
@@ -81,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchResults.classList.remove('hidden');
   }
 
-  function selectItem(item) {
+  async function selectItem(item) {
     selectedItemName.textContent = item.item_name || item.url_name.replace(/_/g, ' ');
     selectedItemUrl.value = item.url_name;
     itemQuantity.value = 1;
@@ -89,10 +162,51 @@ document.addEventListener('DOMContentLoaded', () => {
     maxBuyPrice.value = '';
     autoListCheckbox.checked = true;
     
+    // Reset recommended prices
+    currentRecommendedSell = null;
+    currentRecommendedBuy = null;
+    recSellPrice.textContent = 'Loading...';
+    recBuyPrice.textContent = 'Loading...';
+    recommendedPrices.classList.remove('hidden');
+    
     searchResults.classList.add('hidden');
     addItemForm.classList.remove('hidden');
     searchInput.value = '';
+
+    // Auto-analyze the item for recommended prices
+    try {
+      const analysis = await window.api.market.analyze(item.url_name);
+      if (analysis) {
+        currentRecommendedSell = analysis.optimalSellPrice || analysis.lowestSell;
+        currentRecommendedBuy = analysis.optimalBuyPrice || analysis.highestBuy;
+        
+        recSellPrice.textContent = currentRecommendedSell ? `${currentRecommendedSell}p` : '—';
+        recBuyPrice.textContent = currentRecommendedBuy ? `${currentRecommendedBuy}p` : '—';
+        
+        // Auto-fill with recommended prices if auto-list is checked
+        if (autoListCheckbox.checked && currentRecommendedSell) {
+          minSellPrice.value = currentRecommendedSell;
+        }
+      } else {
+        recSellPrice.textContent = '—';
+        recBuyPrice.textContent = '—';
+      }
+    } catch (error) {
+      console.error('Error analyzing item:', error);
+      recSellPrice.textContent = 'Error';
+      recBuyPrice.textContent = 'Error';
+    }
   }
+
+  // Use Recommended Prices button
+  useRecommendedBtn.addEventListener('click', () => {
+    if (currentRecommendedSell) {
+      minSellPrice.value = currentRecommendedSell;
+    }
+    if (currentRecommendedBuy) {
+      maxBuyPrice.value = currentRecommendedBuy;
+    }
+  });
 
   // Quantity controls for add form
   qtyDecrease.addEventListener('click', () => {
@@ -238,11 +352,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const analyzeBtn = card.querySelector('.btn-analyze');
     analyzeBtn.addEventListener('click', async () => {
+      analyzeBtn.textContent = '⏳';
       const analysis = await window.api.market.analyze(item.urlName);
+      analyzeBtn.textContent = '📊';
       if (analysis) {
         const pricesDiv = card.querySelector('.item-prices');
         pricesDiv.querySelector('.lowest-sell').textContent = analysis.lowestSell ? `${analysis.lowestSell}p` : '—';
         pricesDiv.querySelector('.highest-buy').textContent = analysis.highestBuy ? `${analysis.highestBuy}p` : '—';
+        pricesDiv.querySelector('.rec-sell').textContent = analysis.optimalSellPrice ? `${analysis.optimalSellPrice}p` : '—';
+        pricesDiv.classList.remove('hidden');
+        
+        // Store for apply button
+        card.dataset.recSell = analysis.optimalSellPrice || '';
+        card.dataset.recBuy = analysis.optimalBuyPrice || '';
+      }
+    });
+
+    // Apply recommended prices button
+    const applyRecBtn = card.querySelector('.btn-apply-rec');
+    applyRecBtn.addEventListener('click', async () => {
+      // First analyze if not already done
+      applyRecBtn.textContent = '⏳';
+      const analysis = await window.api.market.analyze(item.urlName);
+      applyRecBtn.textContent = '🎯';
+      
+      if (analysis) {
+        const recSell = analysis.optimalSellPrice || analysis.lowestSell;
+        const recBuy = analysis.optimalBuyPrice || analysis.highestBuy;
+        
+        if (recSell) {
+          minSellInput.value = recSell;
+        }
+        if (recBuy) {
+          maxBuyInput.value = recBuy;
+        }
+        
+        // Save the constraints
+        await window.api.inventory.setPriceConstraints(item.urlName, recSell, recBuy);
+        
+        // Show the prices
+        const pricesDiv = card.querySelector('.item-prices');
+        pricesDiv.querySelector('.lowest-sell').textContent = analysis.lowestSell ? `${analysis.lowestSell}p` : '—';
+        pricesDiv.querySelector('.highest-buy').textContent = analysis.highestBuy ? `${analysis.highestBuy}p` : '—';
+        pricesDiv.querySelector('.rec-sell').textContent = recSell ? `${recSell}p` : '—';
         pricesDiv.classList.remove('hidden');
       }
     });

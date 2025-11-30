@@ -52,6 +52,62 @@ body {
   font-weight: 600;
 }
 
+.header-center {
+  display: flex;
+  align-items: center;
+}
+
+.trades-tracker {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background-color: var(--bg-tertiary);
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.trades-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trades-icon {
+  font-size: 1.2rem;
+}
+
+#trades-remaining {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  min-width: 2ch;
+  text-align: center;
+}
+
+.trades-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.mastery-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mastery-input label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.mastery-field {
+  width: 50px;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -131,6 +187,21 @@ body {
   background-color: #d32f2f;
 }
 
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: white;
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--accent-secondary);
+}
+
+.btn-small {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
 .btn-icon {
   padding: 0.4rem;
   background: transparent;
@@ -143,6 +214,53 @@ body {
 
 .btn-full {
   width: 100%;
+}
+
+/* Recommended Prices */
+.recommended-prices {
+  background-color: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--success);
+}
+
+.recommended-prices.hidden {
+  display: none;
+}
+
+.price-recommendation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.price-recommendation:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.rec-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.rec-value {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.rec-value.sell {
+  color: var(--success);
+}
+
+.rec-value.buy {
+  color: var(--warning);
+}
+
+#use-recommended-btn {
+  width: 100%;
+  margin-top: 0.5rem;
 }
 
 /* Main Content */
@@ -502,6 +620,26 @@ body {
 
 .item-prices.hidden {
   display: none;
+}
+
+.market-prices {
+  margin-bottom: 0.25rem;
+}
+
+.recommended-tag {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.recommended-tag .rec-label {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.recommended-tag .rec-sell {
+  color: var(--success);
+  font-weight: 600;
 }
 
 .lowest-sell {
