@@ -2,7 +2,34 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 
-const INVENTORY_FILE = path.join(__dirname, '../../data/inventory.json');
+/**
+ * Get the appropriate data directory for the application
+ * Uses Electron's app.getPath('userData') if available, otherwise falls back to local data/
+ */
+function getDataDirectory() {
+  try {
+    // Try to use Electron's user data path if running in Electron
+    const { app } = require('electron');
+    if (app && app.getPath) {
+      return path.join(app.getPath('userData'), 'data');
+    }
+  } catch {
+    // Not running in Electron main process, try remote
+    try {
+      const remote = require('@electron/remote');
+      if (remote && remote.app) {
+        return path.join(remote.app.getPath('userData'), 'data');
+      }
+    } catch {
+      // Not in Electron at all
+    }
+  }
+  // Fallback for CLI mode: use local data directory
+  return path.join(__dirname, '../../data');
+}
+
+const DATA_DIR = getDataDirectory();
+const INVENTORY_FILE = path.join(DATA_DIR, 'inventory.json');
 
 /**
  * Inventory Management Service
@@ -20,8 +47,34 @@ class InventoryService {
    */
   ensureDataDirectory() {
     const dataDir = path.dirname(INVENTORY_FILE);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    
+    try {
+      // Check if something exists at the path
+      if (fs.existsSync(dataDir)) {
+        const stats = fs.statSync(dataDir);
+        if (!stats.isDirectory()) {
+          // A file exists where we need a directory - remove it
+          logger.warn(`Removing file at ${dataDir} to create directory`);
+          fs.unlinkSync(dataDir);
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+        // Directory already exists, nothing to do
+      } else {
+        // Create the directory
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+    } catch (error) {
+      logger.error('Error ensuring data directory:', error.message);
+      // Try a fallback to current working directory
+      try {
+        const fallbackDir = path.join(process.cwd(), 'data');
+        if (!fs.existsSync(fallbackDir)) {
+          fs.mkdirSync(fallbackDir, { recursive: true });
+        }
+        logger.info(`Using fallback data directory: ${fallbackDir}`);
+      } catch (fallbackError) {
+        logger.error('Failed to create fallback data directory:', fallbackError.message);
+      }
     }
   }
 
