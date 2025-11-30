@@ -119,13 +119,19 @@ class InventoryService {
   addItem(item) {
     const existingIndex = this.inventory.findIndex(i => i.urlName === item.urlName);
     
+    // Support both legacy autoList and new separate autoSell/autoBuy
+    const autoSell = item.autoSell !== undefined ? item.autoSell : (item.autoList !== false);
+    const autoBuy = item.autoBuy !== undefined ? item.autoBuy : false;
+    
     const inventoryItem = {
       urlName: item.urlName,
       itemName: item.itemName || item.urlName.replace(/_/g, ' '),
       quantity: item.quantity || 1,
       minSellPrice: item.minSellPrice || null,
       maxBuyPrice: item.maxBuyPrice || null,
-      autoList: item.autoList !== false,
+      autoSell: autoSell,  // Auto-list for selling
+      autoBuy: autoBuy,    // Auto-list for buying
+      autoList: autoSell || autoBuy, // Legacy support - true if either is enabled
       addedAt: item.addedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -181,11 +187,63 @@ class InventoryService {
   }
 
   /**
-   * Get items that need price updates
+   * Get items that need price updates (legacy - returns items with any auto-listing enabled)
    * @returns {Array} Items with autoList enabled
    */
   getAutoListItems() {
-    return this.inventory.filter(item => item.autoList);
+    return this.inventory.filter(item => item.autoList || item.autoSell || item.autoBuy);
+  }
+
+  /**
+   * Get items with auto-sell enabled
+   * @returns {Array} Items with autoSell enabled
+   */
+  getAutoSellItems() {
+    return this.inventory.filter(item => item.autoSell);
+  }
+
+  /**
+   * Get items with auto-buy enabled
+   * @returns {Array} Items with autoBuy enabled
+   */
+  getAutoBuyItems() {
+    return this.inventory.filter(item => item.autoBuy);
+  }
+
+  /**
+   * Toggle auto-sell for an item
+   * @param {string} urlName - The URL name of the item
+   * @returns {Object|null} Updated item or null
+   */
+  toggleAutoSell(urlName) {
+    const item = this.getItem(urlName);
+    if (item) {
+      item.autoSell = !item.autoSell;
+      item.autoList = item.autoSell || item.autoBuy;
+      item.updatedAt = new Date().toISOString();
+      this.saveInventory();
+      logger.info(`Toggled auto-sell for ${item.itemName}: ${item.autoSell}`);
+      return item;
+    }
+    return null;
+  }
+
+  /**
+   * Toggle auto-buy for an item
+   * @param {string} urlName - The URL name of the item
+   * @returns {Object|null} Updated item or null
+   */
+  toggleAutoBuy(urlName) {
+    const item = this.getItem(urlName);
+    if (item) {
+      item.autoBuy = !item.autoBuy;
+      item.autoList = item.autoSell || item.autoBuy;
+      item.updatedAt = new Date().toISOString();
+      this.saveInventory();
+      logger.info(`Toggled auto-buy for ${item.itemName}: ${item.autoBuy}`);
+      return item;
+    }
+    return null;
   }
 
   /**
