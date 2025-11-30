@@ -4,28 +4,13 @@ const logger = require('../utils/logger');
 
 /**
  * Get the appropriate data directory for the application
- * Uses Electron's app.getPath('userData') if available, otherwise falls back to local data/
+ * Always uses a local 'data' directory in the app folder for reliability
  */
 function getDataDirectory() {
-  try {
-    // Try to use Electron's user data path if running in Electron
-    const { app } = require('electron');
-    if (app && app.getPath) {
-      return path.join(app.getPath('userData'), 'data');
-    }
-  } catch {
-    // Not running in Electron main process, try remote
-    try {
-      const remote = require('@electron/remote');
-      if (remote && remote.app) {
-        return path.join(remote.app.getPath('userData'), 'data');
-      }
-    } catch {
-      // Not in Electron at all
-    }
-  }
-  // Fallback for CLI mode: use local data directory
-  return path.join(__dirname, '../../data');
+  // Use local data directory in app folder - most reliable approach
+  // This works in both CLI and Electron modes
+  const localDataDir = path.join(__dirname, '../../data');
+  return localDataDir;
 }
 
 const DATA_DIR = getDataDirectory();
