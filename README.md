@@ -6,12 +6,15 @@ A market automation bot for [Warframe Market](https://warframe.market) with inve
 
 ## Features
 
+- 🖥️ **Desktop Application** - Full Electron GUI for easy management
 - 📊 **Market Automation** - Automatically manage market listings with optimal pricing
-- 📦 **Inventory Management** - Track your tradeable items with price constraints
+- 📦 **Inventory Management** - Track your tradeable items with quantity controls
 - 🔔 **Notifications** - Get alerts via Discord webhook or SMS for profitable trades
 - 💰 **Price Optimization** - Automatic undercutting/overcutting for best market position
 - 📈 **Profit Analysis** - Identify profitable flip opportunities
 - ⏰ **Scheduled Updates** - Periodic price checks and order updates
+- ✅ **Enable/Disable Items** - Toggle auto-listing for individual items
+- 🔢 **Multiple Quantities** - List multiple of the same item (e.g., 4x Limbo Prime Blueprint)
 
 ## Installation
 
@@ -28,6 +31,43 @@ cp .env.example .env
 
 # Edit .env with your configuration
 nano .env
+```
+
+## Usage
+
+### Desktop Application (Recommended)
+
+Launch the Electron app with a full graphical interface:
+
+```bash
+npm start
+```
+
+The GUI allows you to:
+- **Search and add items** to your inventory
+- **Adjust quantities** using +/- controls or direct input
+- **Enable/disable items** from auto-listing with toggle switches
+- **Set price constraints** (min sell, max buy) for each item
+- **Analyze market prices** with one click
+- **Start/Stop the bot** from the header
+
+### CLI Mode
+
+If you prefer command-line usage:
+
+```bash
+# Start bot in CLI mode
+npm run start:cli
+
+# Other CLI commands
+npm run add -- volt_prime_set 4 150 100  # Add 4x Volt Prime Set
+npm run list                              # List inventory
+npm run analyze -- rhino_prime_blueprint  # Analyze item
+npm run search -- limbo prime             # Search items
+npm run scan -- 100                       # Scan for profitable trades
+npm run prices                            # Show current prices
+npm run status                            # Show bot status
+npm run help                              # Show help
 ```
 
 ## Getting Your Warframe Market JWT Token
@@ -86,52 +126,6 @@ SELL_UNDERCUT_AMOUNT=1                  # Undercut sell orders by X platinum
 BUY_OVERCUT_AMOUNT=1                    # Overcut buy orders by X platinum
 ```
 
-## Usage
-
-### Start the Bot (Continuous Mode)
-
-```bash
-npm start
-```
-
-The bot will:
-1. Load your inventory
-2. Update all orders to optimal prices
-3. Create new listings for inventory items (if auto-listing enabled)
-4. Monitor for profitable trades
-5. Send notifications for opportunities
-6. Repeat every X minutes (configurable)
-
-### CLI Commands
-
-```bash
-# Add item to inventory
-npm run add -- volt_prime_set 1 150 100
-# Args: <item_slug> [quantity] [min_sell_price] [max_buy_price]
-
-# List inventory
-npm run list
-
-# Analyze an item's market
-npm run analyze -- rhino_prime_blueprint
-
-# Search for items
-npm run search -- volt prime
-
-# Scan market for profitable trades
-npm run scan -- 100
-# Args: [number_of_items_to_scan]
-
-# Show current prices for inventory items
-npm run prices
-
-# Show bot status
-npm run status
-
-# Show help
-npm run help
-```
-
 ## API (Warframe Market v2)
 
 This bot uses the [Warframe Market API v2](https://42bytes.notion.site/WFM-Api-v2-Documentation-5d987e4aa2f74b55a80db1a09932459d).
@@ -158,6 +152,12 @@ When enabled, the bot includes cross-play orders from other platforms in price c
 
 ```
 warframe-trader-bot/
+├── app/
+│   ├── main.js           # Electron main process
+│   ├── preload.js        # Secure IPC bridge
+│   ├── index.html        # GUI layout
+│   ├── styles.css        # GUI styling
+│   └── renderer.js       # GUI logic
 ├── src/
 │   ├── api/
 │   │   └── warframeMarket.js    # Warframe Market API v2 client
@@ -169,13 +169,30 @@ warframe-trader-bot/
 │   ├── utils/
 │   │   └── logger.js            # Logging utility
 │   ├── config.js                # Configuration
-│   └── index.js                 # Main application
+│   └── index.js                 # CLI application
 ├── tests/                       # Test files
 ├── data/                        # Inventory data (auto-created)
 ├── logs/                        # Log files (auto-created)
 ├── .env.example                 # Environment template
 ├── package.json
 └── README.md
+```
+
+## Building the App
+
+To create distributable packages:
+
+```bash
+# Install electron-builder
+npm install electron-builder --save-dev
+
+# Build for your platform
+npm run build
+
+# Or build for specific platforms
+npm run build:win    # Windows
+npm run build:mac    # macOS
+npm run build:linux  # Linux
 ```
 
 ## Discord Webhook Setup
