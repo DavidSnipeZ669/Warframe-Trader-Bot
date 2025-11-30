@@ -375,6 +375,12 @@ body {
   border-bottom: none;
 }
 
+.search-result-item.error {
+  color: var(--error);
+  cursor: default;
+  font-size: 0.85rem;
+}
+
 /* Form Elements */
 .input-field {
   width: 100%;

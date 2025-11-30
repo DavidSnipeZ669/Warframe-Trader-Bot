@@ -108,18 +108,43 @@ ipcMain.handle('inventory:setPriceConstraints', async (event, urlName, minSellPr
   return inventoryService.setPriceConstraints(urlName, minSellPrice, maxBuyPrice);
 });
 
+// Item cache for search
+let itemCache = null;
+let itemCacheTime = 0;
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
 // Search for items on Warframe Market
 ipcMain.handle('market:search', async (event, query) => {
   try {
-    const allItems = await warframeMarket.getAllItems();
-    const matches = allItems.filter(item => 
-      (item.item_name && item.item_name.toLowerCase().includes(query.toLowerCase())) ||
-      (item.url_name && item.url_name.toLowerCase().includes(query.toLowerCase()))
-    ).slice(0, 20);
-    return matches;
+    // Use cache if available and not expired
+    const now = Date.now();
+    if (!itemCache || (now - itemCacheTime) > CACHE_DURATION_MS) {
+      logger.info('Fetching items from Warframe Market API...');
+      itemCache = await warframeMarket.getAllItems();
+      itemCacheTime = now;
+      logger.info(`Cached ${itemCache ? itemCache.length : 0} items`);
+    }
+    
+    if (!itemCache || itemCache.length === 0) {
+      return { error: 'Could not fetch items from Warframe Market. Please check your internet connection.' };
+    }
+    
+    const matches = itemCache.filter(item => {
+      // v2 API uses 'i18n' for localized names and 'slug' for URL names
+      const itemName = item.item_name || item.i18n?.en?.item_name || '';
+      const urlName = item.url_name || item.slug || '';
+      const queryLower = query.toLowerCase();
+      return itemName.toLowerCase().includes(queryLower) || urlName.toLowerCase().includes(queryLower);
+    }).slice(0, 20);
+    
+    // Map to consistent format
+    return matches.map(item => ({
+      item_name: item.item_name || item.i18n?.en?.item_name || item.slug?.replace(/_/g, ' ') || 'Unknown',
+      url_name: item.url_name || item.slug || item.id
+    }));
   } catch (error) {
     logger.error('Search error:', error.message);
-    return [];
+    return { error: `Search failed: ${error.message}. Please check your internet connection.` };
   }
 });
 

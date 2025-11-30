@@ -203,8 +203,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function displaySearchResults(results) {
     searchResults.innerHTML = '';
     
-    if (results.length === 0) {
-      searchResults.innerHTML = '<div class="search-result-item">No items found</div>';
+    // Handle error response
+    if (results && results.error) {
+      searchResults.innerHTML = `<div class="search-result-item error">${results.error}</div>`;
+      searchResults.classList.remove('hidden');
+      return;
+    }
+    
+    // Handle empty results or non-array
+    if (!Array.isArray(results) || results.length === 0) {
+      searchResults.innerHTML = '<div class="search-result-item">No items found. Try a different search term.</div>';
       searchResults.classList.remove('hidden');
       return;
     }
