@@ -22,12 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const qtyIncrease = document.getElementById('qty-increase');
   const itemCardTemplate = document.getElementById('item-card-template');
 
+  // Confirm Modal Elements
+  const confirmModal = document.getElementById('confirm-modal');
+  const confirmMessage = document.getElementById('confirm-message');
+  const confirmItemUrl = document.getElementById('confirm-item-url');
+  const closeConfirmModal = document.getElementById('close-confirm-modal');
+  const cancelConfirm = document.getElementById('cancel-confirm');
+  const confirmDelete = document.getElementById('confirm-delete');
+
   let searchTimeout = null;
   let inventory = [];
 
   // Initialize
   loadInventory();
   checkBotStatus();
+  setupConfirmModal();
 
   // Search functionality
   searchInput.addEventListener('input', (e) => {
@@ -239,12 +248,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const removeBtn = card.querySelector('.btn-remove');
-    removeBtn.addEventListener('click', async () => {
-      await window.api.inventory.remove(item.urlName);
-      loadInventory();
+    removeBtn.addEventListener('click', () => {
+      showConfirmModal(item.urlName, item.itemName);
     });
 
     return card;
+  }
+
+  // Confirm Modal Functions
+  function setupConfirmModal() {
+    closeConfirmModal.addEventListener('click', hideConfirmModal);
+    cancelConfirm.addEventListener('click', hideConfirmModal);
+    confirmDelete.addEventListener('click', async () => {
+      const urlName = confirmItemUrl.value;
+      if (urlName) {
+        await window.api.inventory.remove(urlName);
+        loadInventory();
+        hideConfirmModal();
+      }
+    });
+    
+    // Close on outside click
+    confirmModal.addEventListener('click', (e) => {
+      if (e.target === confirmModal) {
+        hideConfirmModal();
+      }
+    });
+  }
+
+  function showConfirmModal(urlName, itemName) {
+    confirmItemUrl.value = urlName;
+    confirmMessage.textContent = `Are you sure you want to remove "${itemName}" from your inventory?`;
+    confirmModal.classList.remove('hidden');
+  }
+
+  function hideConfirmModal() {
+    confirmModal.classList.add('hidden');
   }
 
   function updateStats() {

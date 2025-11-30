@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';">
   <title>Warframe Trader Bot</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -150,6 +150,24 @@
       </div>
     </div>
   </template>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>🗑️ Confirm Delete</h3>
+        <button class="btn-close" id="close-confirm-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message">Are you sure you want to remove this item?</p>
+        <input type="hidden" id="confirm-item-url">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-confirm">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
 
   <script src="renderer.js"></script>
 </body>
