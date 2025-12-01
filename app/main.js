@@ -4,6 +4,7 @@ const path = require('path');
 // Import services
 const inventoryService = require('../src/services/inventory');
 const capitalService = require('../src/services/capital');
+const tradeHistoryService = require('../src/services/tradeHistory');
 const priceAnalysisService = require('../src/services/priceAnalysis');
 const marketAutomationService = require('../src/services/marketAutomation');
 const notificationService = require('../src/services/notification');
@@ -91,16 +92,21 @@ ipcMain.handle('inventory:updateQuantity', async (event, urlName, quantity) => {
   return inventoryService.updateQuantity(urlName, quantity);
 });
 
-// Toggle auto-list for an item
+// Toggle auto-list for an item (legacy - toggles autoSell)
+// @deprecated Use inventory:toggleAutoSell instead
 ipcMain.handle('inventory:toggleAutoList', async (event, urlName) => {
-  const item = inventoryService.getItem(urlName);
-  if (item) {
-    item.autoList = !item.autoList;
-    item.updatedAt = new Date().toISOString();
-    inventoryService.saveInventory();
-    return item;
-  }
-  return null;
+  logger.warn(`inventory:toggleAutoList is deprecated, use inventory:toggleAutoSell instead`);
+  return inventoryService.toggleAutoSell(urlName);
+});
+
+// Toggle auto-sell for an item
+ipcMain.handle('inventory:toggleAutoSell', async (event, urlName) => {
+  return inventoryService.toggleAutoSell(urlName);
+});
+
+// Toggle auto-buy for an item
+ipcMain.handle('inventory:toggleAutoBuy', async (event, urlName) => {
+  return inventoryService.toggleAutoBuy(urlName);
 });
 
 // Set price constraints
@@ -300,4 +306,110 @@ ipcMain.handle('capital:getHistory', async (event, limit) => {
 // Reset capital
 ipcMain.handle('capital:reset', async () => {
   return capitalService.reset();
+});
+
+// Trade History IPC Handlers
+
+// Get trade history
+ipcMain.handle('tradeHistory:getAll', async (event, limit) => {
+  return tradeHistoryService.getHistory(limit);
+});
+
+// Record a sale
+ipcMain.handle('tradeHistory:recordSale', async (event, itemName, urlName, quantity, price, buyer) => {
+  return tradeHistoryService.recordSale(itemName, urlName, quantity, price, buyer);
+});
+
+// Record a purchase
+ipcMain.handle('tradeHistory:recordPurchase', async (event, itemName, urlName, quantity, price, seller) => {
+  return tradeHistoryService.recordPurchase(itemName, urlName, quantity, price, seller);
+});
+
+// Get sales only
+ipcMain.handle('tradeHistory:getSales', async (event, limit) => {
+  return tradeHistoryService.getSales(limit);
+});
+
+// Get purchases only
+ipcMain.handle('tradeHistory:getPurchases', async (event, limit) => {
+  return tradeHistoryService.getPurchases(limit);
+});
+
+// Get today's trades
+ipcMain.handle('tradeHistory:getToday', async () => {
+  return tradeHistoryService.getTodayTrades();
+});
+
+// Get today's statistics
+ipcMain.handle('tradeHistory:getTodayStats', async () => {
+  return tradeHistoryService.getTodayStats();
+});
+
+// Get history for specific item
+ipcMain.handle('tradeHistory:getItemHistory', async (event, urlName) => {
+  return tradeHistoryService.getItemHistory(urlName);
+});
+
+// Delete a trade entry
+ipcMain.handle('tradeHistory:delete', async (event, tradeId) => {
+  return tradeHistoryService.deleteTrade(tradeId);
+});
+
+// Clear all history
+ipcMain.handle('tradeHistory:clear', async () => {
+  tradeHistoryService.clearHistory();
+  return { success: true };
+});
+
+// Market Trending IPC Handler
+ipcMain.handle('market:getTrending', async (event, urlName) => {
+  try {
+    // Get statistics from the API to determine trending
+    const stats = await warframeMarket.getItemStatistics(urlName);
+    
+    if (!stats) {
+      return { error: 'Could not fetch statistics' };
+    }
+    
+    // Calculate 7-day price trend
+    const history = stats.statistics_closed?.['90days'] || stats.statistics_live?.['90days'] || [];
+    
+    if (history.length < 2) {
+      return { trend: 'stable', change: 0, history: [] };
+    }
+    
+    // Get last 7 days of data
+    const last7Days = history.slice(-7);
+    const last14Days = history.slice(-14, -7);
+    
+    const recentAvg = last7Days.reduce((sum, d) => sum + (d.avg_price || d.median || 0), 0) / last7Days.length;
+    const previousAvg = last14Days.length > 0 
+      ? last14Days.reduce((sum, d) => sum + (d.avg_price || d.median || 0), 0) / last14Days.length
+      : recentAvg;
+    
+    const change = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg) * 100 : 0;
+    
+    let trend = 'stable';
+    if (change > 5) trend = 'rising';
+    else if (change > 2) trend = 'slight_rise';
+    else if (change < -5) trend = 'falling';
+    else if (change < -2) trend = 'slight_fall';
+    
+    // Return trending data
+    return {
+      trend,
+      change: Math.round(change * 10) / 10,
+      recentAvg: Math.round(recentAvg),
+      previousAvg: Math.round(previousAvg),
+      volume: last7Days.reduce((sum, d) => sum + (d.volume || 0), 0),
+      history: last7Days.map(d => ({
+        date: d.datetime,
+        price: d.avg_price || d.median || 0,
+        volume: d.volume || 0
+      }))
+    };
+  } catch (error) {
+    logger.error('Error getting trending data:', error.message);
+    return { error: error.message };
+  }
 });

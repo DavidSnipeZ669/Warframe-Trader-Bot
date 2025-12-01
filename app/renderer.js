@@ -3,6 +3,15 @@
 // Constants
 const MAX_MASTERY_RANK = 35;
 
+/**
+ * Convert an item name to URL slug format
+ * @param {string} name - Item name (e.g., "Volt Prime Set")
+ * @returns {string} URL slug (e.g., "volt_prime_set")
+ */
+function toUrlName(name) {
+  return name.toLowerCase().replace(/\s+/g, '_');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Elements
   const searchInput = document.getElementById('search-input');
@@ -17,7 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const addItemBtn = document.getElementById('add-item-btn');
   const inventoryList = document.getElementById('inventory-list');
   const totalItemsSpan = document.getElementById('total-items');
-  const autoListedSpan = document.getElementById('auto-listed');
+  const autoSellCountSpan = document.getElementById('auto-sell-count');
+  const autoBuyCountSpan = document.getElementById('auto-buy-count');
   const toggleBotBtn = document.getElementById('toggle-bot');
   const statusIndicator = document.getElementById('status-indicator');
   const statusText = document.getElementById('status-text');
@@ -47,17 +57,62 @@ document.addEventListener('DOMContentLoaded', () => {
   const cancelConfirm = document.getElementById('cancel-confirm');
   const confirmDelete = document.getElementById('confirm-delete');
 
+  // Trade History Elements
+  const tradeHistoryList = document.getElementById('trade-history-list');
+  const todayTradesCount = document.getElementById('today-trades-count');
+  const todayProfit = document.getElementById('today-profit');
+  const recordSaleBtn = document.getElementById('record-sale-btn');
+  const recordBuyBtn = document.getElementById('record-buy-btn');
+  const tradeEntryTemplate = document.getElementById('trade-entry-template');
+
+  // Record Trade Modal Elements
+  const recordTradeModal = document.getElementById('record-trade-modal');
+  const recordTradeTitle = document.getElementById('record-trade-title');
+  const tradeType = document.getElementById('trade-type');
+  const tradeItemSearch = document.getElementById('trade-item-search');
+  const tradeItemResults = document.getElementById('trade-item-results');
+  const tradeItemUrl = document.getElementById('trade-item-url');
+  const tradeItemName = document.getElementById('trade-item-name');
+  const tradeQuantity = document.getElementById('trade-quantity');
+  const tradePrice = document.getElementById('trade-price');
+  const tradePartner = document.getElementById('trade-partner');
+  const closeRecordTradeModal = document.getElementById('close-record-trade-modal');
+  const cancelRecordTrade = document.getElementById('cancel-record-trade');
+  const submitRecordTrade = document.getElementById('submit-record-trade');
+
+  // Trending Modal Elements
+  const trendingModal = document.getElementById('trending-modal');
+  const trendingItemName = document.getElementById('trending-item-name');
+  const trendIcon = document.getElementById('trend-icon');
+  const trendText = document.getElementById('trend-text');
+  const trendChangeValue = document.getElementById('trend-change-value');
+  const trendRecentAvg = document.getElementById('trend-recent-avg');
+  const trendPreviousAvg = document.getElementById('trend-previous-avg');
+  const trendVolume = document.getElementById('trend-volume');
+  const trendHistoryBars = document.getElementById('trend-history-bars');
+  const closeTrendingModal = document.getElementById('close-trending-modal');
+
+  // History Tab Buttons
+  const historyTabs = document.querySelectorAll('.history-tabs .tab-btn');
+
   let searchTimeout = null;
+  let tradeSearchTimeout = null;
   let inventory = [];
   let currentRecommendedSell = null;
   let currentRecommendedBuy = null;
   let tradesUsedToday = 0;
+  let currentHistoryTab = 'all';
 
   // Initialize
   loadInventory();
   checkBotStatus();
   setupConfirmModal();
   initTradesTracker();
+  initCapitalTracker();
+  initTradeHistory();
+  setupRecordTradeModal();
+  setupTrendingModal();
+  setupHistoryTabs();
   initCapitalTracker();
 
   // Capital Tracker Functions
@@ -357,7 +412,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = template.querySelector('.item-card');
     
     card.dataset.urlName = item.urlName;
-    if (!item.autoList) {
+    // Consider disabled if neither autoSell nor autoBuy is enabled
+    const isDisabled = !item.autoSell && !item.autoBuy;
+    if (isDisabled) {
       card.classList.add('disabled');
     }
 
@@ -376,8 +433,11 @@ document.addEventListener('DOMContentLoaded', () => {
       maxBuyInput.value = item.maxBuyPrice;
     }
     
-    const autoListToggle = card.querySelector('.auto-list-toggle');
-    autoListToggle.checked = item.autoList;
+    // Separate auto-sell and auto-buy toggles
+    const autoSellToggle = card.querySelector('.auto-sell-toggle');
+    const autoBuyToggle = card.querySelector('.auto-buy-toggle');
+    autoSellToggle.checked = item.autoSell !== false; // Default to true for backwards compatibility
+    autoBuyToggle.checked = item.autoBuy || false;
 
     // Event listeners
     const qtyDec = card.querySelector('.qty-dec');
@@ -421,10 +481,26 @@ document.addEventListener('DOMContentLoaded', () => {
       await window.api.inventory.setPriceConstraints(item.urlName, minSell, maxBuy);
     });
 
-    autoListToggle.addEventListener('change', async () => {
-      await window.api.inventory.toggleAutoList(item.urlName);
-      card.classList.toggle('disabled', !autoListToggle.checked);
+    // Auto-sell toggle
+    autoSellToggle.addEventListener('change', async () => {
+      await window.api.inventory.toggleAutoSell(item.urlName);
+      const nowDisabled = !autoSellToggle.checked && !autoBuyToggle.checked;
+      card.classList.toggle('disabled', nowDisabled);
       updateStats();
+    });
+
+    // Auto-buy toggle
+    autoBuyToggle.addEventListener('change', async () => {
+      await window.api.inventory.toggleAutoBuy(item.urlName);
+      const nowDisabled = !autoSellToggle.checked && !autoBuyToggle.checked;
+      card.classList.toggle('disabled', nowDisabled);
+      updateStats();
+    });
+
+    // Trending button
+    const trendingBtn = card.querySelector('.btn-trending');
+    trendingBtn.addEventListener('click', async () => {
+      showTrendingModal(item.urlName, item.itemName);
     });
 
     const analyzeBtn = card.querySelector('.btn-analyze');
@@ -517,8 +593,301 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateStats() {
     totalItemsSpan.textContent = `${inventory.length} items`;
-    const autoListed = inventory.filter(i => i.autoList).length;
-    autoListedSpan.textContent = `${autoListed} auto-listed`;
+    const autoSellCount = inventory.filter(i => i.autoSell !== false).length;
+    const autoBuyCount = inventory.filter(i => i.autoBuy).length;
+    autoSellCountSpan.textContent = `${autoSellCount} auto-sell`;
+    autoBuyCountSpan.textContent = `${autoBuyCount} auto-buy`;
+  }
+
+  // Trade History Functions
+  async function initTradeHistory() {
+    await loadTradeHistory();
+    await updateTodayStats();
+  }
+
+  async function loadTradeHistory(filter = 'all') {
+    let trades;
+    if (filter === 'sales') {
+      trades = await window.api.tradeHistory.getSales(50);
+    } else if (filter === 'purchases') {
+      trades = await window.api.tradeHistory.getPurchases(50);
+    } else {
+      trades = await window.api.tradeHistory.getAll(50);
+    }
+    
+    renderTradeHistory(trades);
+  }
+
+  function renderTradeHistory(trades) {
+    tradeHistoryList.innerHTML = '';
+    
+    if (!trades || trades.length === 0) {
+      tradeHistoryList.innerHTML = `
+        <div class="empty-state small">
+          <p>No trades yet</p>
+        </div>
+      `;
+      return;
+    }
+
+    trades.forEach(trade => {
+      const entry = createTradeEntry(trade);
+      tradeHistoryList.appendChild(entry);
+    });
+  }
+
+  function createTradeEntry(trade) {
+    const div = document.createElement('div');
+    div.className = `trade-entry ${trade.type}`;
+    div.dataset.tradeId = trade.id;
+    
+    const icon = trade.type === 'sell' ? '💰' : '💵';
+    const timeAgo = getTimeAgo(new Date(trade.timestamp));
+    
+    div.innerHTML = `
+      <div class="trade-icon">${icon}</div>
+      <div class="trade-details">
+        <span class="trade-item-name">${trade.itemName}</span>
+        <span class="trade-meta">${trade.quantity}x @ ${trade.price}p • ${timeAgo}</span>
+      </div>
+      <div class="trade-value ${trade.type}">${trade.type === 'sell' ? '+' : '-'}${trade.totalValue}p</div>
+    `;
+    
+    return div;
+  }
+
+  function getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
+  async function updateTodayStats() {
+    const stats = await window.api.tradeHistory.getTodayStats();
+    todayTradesCount.textContent = stats.totalTrades;
+    const profit = stats.profit;
+    todayProfit.textContent = profit >= 0 ? `+${profit}p` : `${profit}p`;
+    todayProfit.className = profit >= 0 ? 'stat-value profit' : 'stat-value loss';
+  }
+
+  function setupHistoryTabs() {
+    historyTabs.forEach(tab => {
+      tab.addEventListener('click', async () => {
+        historyTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentHistoryTab = tab.dataset.tab;
+        await loadTradeHistory(currentHistoryTab);
+      });
+    });
+  }
+
+  // Record Trade Modal
+  function setupRecordTradeModal() {
+    recordSaleBtn.addEventListener('click', () => {
+      openRecordTradeModal('sell');
+    });
+
+    recordBuyBtn.addEventListener('click', () => {
+      openRecordTradeModal('buy');
+    });
+
+    closeRecordTradeModal.addEventListener('click', hideRecordTradeModal);
+    cancelRecordTrade.addEventListener('click', hideRecordTradeModal);
+
+    recordTradeModal.addEventListener('click', (e) => {
+      if (e.target === recordTradeModal) {
+        hideRecordTradeModal();
+      }
+    });
+
+    // Trade item search
+    tradeItemSearch.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      
+      if (tradeSearchTimeout) {
+        clearTimeout(tradeSearchTimeout);
+      }
+
+      if (query.length < 2) {
+        tradeItemResults.classList.add('hidden');
+        return;
+      }
+
+      tradeSearchTimeout = setTimeout(async () => {
+        const results = await window.api.market.search(query);
+        displayTradeSearchResults(results);
+      }, 300);
+    });
+
+    submitRecordTrade.addEventListener('click', async () => {
+      const itemName = tradeItemName.value || tradeItemSearch.value;
+      const urlName = tradeItemUrl.value || toUrlName(tradeItemSearch.value);
+      const quantity = parseInt(tradeQuantity.value) || 1;
+      const price = parseInt(tradePrice.value);
+      const partner = tradePartner.value || null;
+
+      if (!itemName || !price) {
+        alert('Please enter an item name and price');
+        return;
+      }
+
+      if (tradeType.value === 'sell') {
+        await window.api.tradeHistory.recordSale(itemName, urlName, quantity, price, partner);
+        // Update platinum
+        await window.addPlatinum(price * quantity, `Sold ${quantity}x ${itemName}`);
+        // Use a trade
+        window.useTrade();
+      } else {
+        await window.api.tradeHistory.recordPurchase(itemName, urlName, quantity, price, partner);
+        // Subtract platinum
+        await window.subtractPlatinum(price * quantity, `Bought ${quantity}x ${itemName}`);
+        // Use a trade
+        window.useTrade();
+      }
+
+      hideRecordTradeModal();
+      await loadTradeHistory(currentHistoryTab);
+      await updateTodayStats();
+    });
+  }
+
+  function displayTradeSearchResults(results) {
+    tradeItemResults.innerHTML = '';
+    
+    if (results && results.error) {
+      tradeItemResults.innerHTML = `<div class="search-result-item error">${results.error}</div>`;
+      tradeItemResults.classList.remove('hidden');
+      return;
+    }
+    
+    if (!Array.isArray(results) || results.length === 0) {
+      tradeItemResults.innerHTML = '<div class="search-result-item">No items found</div>';
+      tradeItemResults.classList.remove('hidden');
+      return;
+    }
+
+    results.slice(0, 10).forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.textContent = item.item_name || item.url_name.replace(/_/g, ' ');
+      
+      div.addEventListener('click', () => {
+        tradeItemSearch.value = item.item_name || item.url_name.replace(/_/g, ' ');
+        tradeItemUrl.value = item.url_name;
+        tradeItemName.value = item.item_name || item.url_name.replace(/_/g, ' ');
+        tradeItemResults.classList.add('hidden');
+      });
+      
+      tradeItemResults.appendChild(div);
+    });
+
+    tradeItemResults.classList.remove('hidden');
+  }
+
+  function openRecordTradeModal(type) {
+    tradeType.value = type;
+    recordTradeTitle.textContent = type === 'sell' ? '💰 Record Sale' : '💵 Record Purchase';
+    submitRecordTrade.textContent = type === 'sell' ? 'Record Sale' : 'Record Purchase';
+    submitRecordTrade.className = type === 'sell' ? 'btn btn-success' : 'btn btn-warning';
+    
+    // Reset form
+    tradeItemSearch.value = '';
+    tradeItemUrl.value = '';
+    tradeItemName.value = '';
+    tradeQuantity.value = 1;
+    tradePrice.value = '';
+    tradePartner.value = '';
+    tradeItemResults.classList.add('hidden');
+    
+    recordTradeModal.classList.remove('hidden');
+  }
+
+  function hideRecordTradeModal() {
+    recordTradeModal.classList.add('hidden');
+  }
+
+  // Trending Modal Functions
+  function setupTrendingModal() {
+    closeTrendingModal.addEventListener('click', hideTrendingModal);
+    trendingModal.addEventListener('click', (e) => {
+      if (e.target === trendingModal) {
+        hideTrendingModal();
+      }
+    });
+  }
+
+  async function showTrendingModal(urlName, itemName) {
+    trendingItemName.textContent = itemName;
+    trendIcon.textContent = '⏳';
+    trendText.textContent = 'Loading...';
+    trendChangeValue.textContent = '';
+    trendRecentAvg.textContent = '—';
+    trendPreviousAvg.textContent = '—';
+    trendVolume.textContent = '—';
+    trendHistoryBars.innerHTML = '';
+    
+    trendingModal.classList.remove('hidden');
+    
+    const trending = await window.api.market.getTrending(urlName);
+    
+    if (trending.error) {
+      trendIcon.textContent = '❌';
+      trendText.textContent = 'Error loading data';
+      return;
+    }
+    
+    // Update trend display
+    const trendIcons = {
+      'rising': '📈',
+      'slight_rise': '↗️',
+      'stable': '➡️',
+      'slight_fall': '↘️',
+      'falling': '📉'
+    };
+    
+    const trendColors = {
+      'rising': 'var(--success)',
+      'slight_rise': '#8bc34a',
+      'stable': 'var(--text-secondary)',
+      'slight_fall': 'var(--warning)',
+      'falling': 'var(--error)'
+    };
+    
+    trendIcon.textContent = trendIcons[trending.trend] || '➡️';
+    trendText.textContent = trending.trend.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+    trendText.style.color = trendColors[trending.trend];
+    
+    const changePrefix = trending.change >= 0 ? '+' : '';
+    trendChangeValue.textContent = `${changePrefix}${trending.change}%`;
+    trendChangeValue.style.color = trending.change >= 0 ? 'var(--success)' : 'var(--error)';
+    
+    trendRecentAvg.textContent = trending.recentAvg ? `${trending.recentAvg}p` : '—';
+    trendPreviousAvg.textContent = trending.previousAvg ? `${trending.previousAvg}p` : '—';
+    trendVolume.textContent = trending.volume || '—';
+    
+    // Render price history bars
+    if (trending.history && trending.history.length > 0) {
+      const maxPrice = Math.max(...trending.history.map(d => d.price));
+      trendHistoryBars.innerHTML = trending.history.map(d => {
+        const height = maxPrice > 0 ? (d.price / maxPrice) * 100 : 0;
+        const date = new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' });
+        return `
+          <div class="history-bar" title="${date}: ${d.price}p">
+            <div class="bar-fill" style="height: ${height}%"></div>
+            <span class="bar-label">${d.price}p</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  function hideTrendingModal() {
+    trendingModal.classList.add('hidden');
   }
 
   // Bot control

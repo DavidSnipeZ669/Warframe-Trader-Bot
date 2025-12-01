@@ -121,7 +121,8 @@
           <h2>📦 Inventory</h2>
           <div class="inventory-stats">
             <span id="total-items">0 items</span>
-            <span id="auto-listed">0 auto-listed</span>
+            <span id="auto-sell-count">0 auto-sell</span>
+            <span id="auto-buy-count">0 auto-buy</span>
           </div>
         </div>
         
@@ -132,6 +133,42 @@
           </div>
         </div>
       </section>
+
+      <!-- Trade History Panel -->
+      <aside class="history-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>📜 Trade History</h2>
+            <div class="history-tabs">
+              <button class="tab-btn active" data-tab="all">All</button>
+              <button class="tab-btn" data-tab="sales">Sales</button>
+              <button class="tab-btn" data-tab="purchases">Buys</button>
+            </div>
+          </div>
+          
+          <div class="today-stats">
+            <div class="stat-item">
+              <span class="stat-label">Today's Trades:</span>
+              <span id="today-trades-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Today's Profit:</span>
+              <span id="today-profit" class="stat-value profit">0p</span>
+            </div>
+          </div>
+          
+          <div id="trade-history-list" class="trade-history-list">
+            <div class="empty-state small">
+              <p>No trades yet</p>
+            </div>
+          </div>
+          
+          <div class="history-actions">
+            <button id="record-sale-btn" class="btn btn-success btn-small">+ Record Sale</button>
+            <button id="record-buy-btn" class="btn btn-warning btn-small">+ Record Buy</button>
+          </div>
+        </div>
+      </aside>
     </main>
 
     <!-- Footer -->
@@ -146,6 +183,7 @@
       <div class="item-header">
         <h3 class="item-name"></h3>
         <div class="item-actions">
+          <button class="btn btn-icon btn-trending" title="View market trend">📈</button>
           <button class="btn btn-icon btn-analyze" title="Analyze prices">📊</button>
           <button class="btn btn-icon btn-apply-rec" title="Apply recommended prices">🎯</button>
           <button class="btn btn-icon btn-remove" title="Remove item">🗑️</button>
@@ -173,12 +211,27 @@
         </div>
         
         <div class="control-group toggle-group">
-          <label>Auto-List</label>
+          <label>Auto-Sell</label>
           <label class="toggle">
-            <input type="checkbox" class="auto-list-toggle">
-            <span class="toggle-slider"></span>
+            <input type="checkbox" class="auto-sell-toggle">
+            <span class="toggle-slider sell-slider"></span>
           </label>
         </div>
+        
+        <div class="control-group toggle-group">
+          <label>Auto-Buy</label>
+          <label class="toggle">
+            <input type="checkbox" class="auto-buy-toggle">
+            <span class="toggle-slider buy-slider"></span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Trending indicator -->
+      <div class="item-trending hidden">
+        <span class="trending-icon">📈</span>
+        <span class="trending-text">Stable</span>
+        <span class="trending-change">0%</span>
       </div>
       
       <div class="item-prices hidden">
@@ -213,6 +266,97 @@
       </div>
     </div>
   </div>
+
+  <!-- Record Trade Modal -->
+  <div id="record-trade-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="record-trade-title">📝 Record Trade</h3>
+        <button class="btn-close" id="close-record-trade-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="trade-type" value="sell">
+        <div class="form-group">
+          <label for="trade-item-search">Item Name</label>
+          <input type="text" id="trade-item-search" placeholder="Search for item..." class="input-field">
+          <div id="trade-item-results" class="search-results hidden"></div>
+          <input type="hidden" id="trade-item-url">
+          <input type="hidden" id="trade-item-name">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="trade-quantity">Quantity</label>
+            <input type="number" id="trade-quantity" value="1" min="1" max="100" class="input-field">
+          </div>
+          <div class="form-group">
+            <label for="trade-price">Price (p)</label>
+            <input type="number" id="trade-price" min="1" class="input-field" placeholder="e.g. 50">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="trade-partner">Player Name (optional)</label>
+          <input type="text" id="trade-partner" placeholder="IGN of trade partner" class="input-field">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-record-trade">Cancel</button>
+        <button class="btn btn-success" id="submit-record-trade">Record Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trending Modal -->
+  <div id="trending-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📈 Market Trend</h3>
+        <button class="btn-close" id="close-trending-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 id="trending-item-name">Item Name</h4>
+        <div class="trending-summary">
+          <div class="trend-indicator">
+            <span id="trend-icon" class="trend-emoji">📊</span>
+            <span id="trend-text" class="trend-status">Loading...</span>
+          </div>
+          <div class="trend-change">
+            <span id="trend-change-value">0%</span>
+            <span class="trend-period">vs last week</span>
+          </div>
+        </div>
+        <div class="trending-stats">
+          <div class="trend-stat">
+            <span class="stat-label">Recent Avg:</span>
+            <span id="trend-recent-avg" class="stat-value">—</span>
+          </div>
+          <div class="trend-stat">
+            <span class="stat-label">Previous Avg:</span>
+            <span id="trend-previous-avg" class="stat-value">—</span>
+          </div>
+          <div class="trend-stat">
+            <span class="stat-label">7-Day Volume:</span>
+            <span id="trend-volume" class="stat-value">—</span>
+          </div>
+        </div>
+        <div id="trend-history" class="trend-history">
+          <h5>7-Day Price History</h5>
+          <div id="trend-history-bars" class="history-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trade History Entry Template -->
+  <template id="trade-entry-template">
+    <div class="trade-entry" data-trade-id="">
+      <div class="trade-icon"></div>
+      <div class="trade-details">
+        <span class="trade-item-name"></span>
+        <span class="trade-meta"></span>
+      </div>
+      <div class="trade-value"></div>
+    </div>
+  </template>
 
   <script src="renderer.js"></script>
 </body>

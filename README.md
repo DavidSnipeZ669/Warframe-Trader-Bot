@@ -11,10 +11,13 @@ A market automation bot for [Warframe Market](https://warframe.market) with inve
 - 📦 **Inventory Management** - Track your tradeable items with quantity controls
 - 🔔 **Notifications** - Get alerts via Discord webhook or SMS for profitable trades
 - 💰 **Price Optimization** - Automatic undercutting/overcutting for best market position
-- 📈 **Profit Analysis** - Identify profitable flip opportunities
+- 📈 **Market Trending** - View price trends and 7-day history for any item
+- 📜 **Trade History** - Track all your buys and sells with profit calculations
 - ⏰ **Scheduled Updates** - Periodic price checks and order updates
-- ✅ **Enable/Disable Items** - Toggle auto-listing for individual items
+- ✅ **Separate Auto-Sell/Auto-Buy** - Toggle selling and buying independently per item
 - 🔢 **Multiple Quantities** - List multiple of the same item (e.g., 4x Limbo Prime Blueprint)
+- 💎 **Capital Tracking** - Track your platinum and credits balance
+- 💱 **Trades Remaining Counter** - Track daily trades based on mastery rank
 
 ## Installation
 
@@ -46,10 +49,34 @@ npm start
 The GUI allows you to:
 - **Search and add items** to your inventory
 - **Adjust quantities** using +/- controls or direct input
-- **Enable/disable items** from auto-listing with toggle switches
+- **Enable/disable auto-sell** for automatic sell listings
+- **Enable/disable auto-buy** for automatic buy orders (separate toggle)
 - **Set price constraints** (min sell, max buy) for each item
-- **Analyze market prices** with one click
+- **Analyze market prices** with one click (📊 button)
+- **Apply recommended prices** automatically (🎯 button)
+- **View market trends** with 7-day history (📈 button)
+- **Record trades** manually to track your trading history
+- **Track platinum and credits** in the header
+- **Monitor trades remaining** based on your mastery rank
 - **Start/Stop the bot** from the header
+
+### Trade History Panel
+
+The right sidebar shows your trading history:
+- **All trades** - View all recorded buys and sells
+- **Sales tab** - Filter to show only sales
+- **Buys tab** - Filter to show only purchases
+- **Today's stats** - See your daily trade count and profit
+- **Record Sale/Buy** buttons - Manually log completed trades
+
+### Market Trending
+
+Click the 📈 button on any item to see:
+- **Trend direction** (rising, stable, falling)
+- **Price change** percentage vs last week
+- **Recent average** price
+- **7-day volume** of trades
+- **Visual price history** bars
 
 ### CLI Mode
 
@@ -163,6 +190,8 @@ warframe-trader-bot/
 │   │   └── warframeMarket.js    # Warframe Market API v2 client
 │   ├── services/
 │   │   ├── inventory.js         # Inventory management
+│   │   ├── capital.js           # Platinum/credits tracking
+│   │   ├── tradeHistory.js      # Trade history logging
 │   │   ├── marketAutomation.js  # Market automation service
 │   │   ├── notification.js      # Discord/SMS notifications
 │   │   └── priceAnalysis.js     # Price analysis & profit detection
@@ -171,7 +200,10 @@ warframe-trader-bot/
 │   ├── config.js                # Configuration
 │   └── index.js                 # CLI application
 ├── tests/                       # Test files
-├── data/                        # Inventory data (auto-created)
+├── data/                        # Saved data (auto-created)
+│   ├── inventory.json           # Your item inventory
+│   ├── capital.json             # Platinum & credits balance
+│   └── trade_history.json       # Trade history log
 ├── logs/                        # Log files (auto-created)
 ├── .env.example                 # Environment template
 ├── package.json
