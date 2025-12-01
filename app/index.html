@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self';">
+  <title>Warframe Trader Bot</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1>🎮 Warframe Trader Bot</h1>
+      </div>
+      <div class="header-center">
+        <div class="capital-tracker">
+          <div class="capital-item">
+            <span class="capital-icon">💎</span>
+            <input type="number" id="platinum-amount" min="0" value="0" class="input-field capital-input" title="Current Platinum">
+            <span class="capital-label">p</span>
+          </div>
+          <div class="capital-item">
+            <span class="capital-icon">🪙</span>
+            <input type="number" id="credits-amount" min="0" value="0" class="input-field capital-input" title="Current Credits">
+            <span class="capital-label">c</span>
+          </div>
+        </div>
+        <div class="trades-tracker">
+          <div class="trades-count">
+            <span class="trades-icon">💱</span>
+            <span id="trades-remaining">0</span>
+            <span class="trades-label">trades left</span>
+          </div>
+          <div class="mastery-input">
+            <label for="mastery-rank">MR:</label>
+            <input type="number" id="mastery-rank" min="1" max="35" value="17" class="input-field mastery-field">
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="bot-status">
+          <span id="status-indicator" class="status-indicator offline"></span>
+          <span id="status-text">Stopped</span>
+        </div>
+        <button id="toggle-bot" class="btn btn-primary">Start Bot</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Sidebar - Add Items -->
+      <aside class="sidebar">
+        <div class="panel">
+          <h2>➕ Add Item</h2>
+          <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search items..." class="input-field">
+            <div id="search-results" class="search-results hidden"></div>
+          </div>
+          
+          <div id="add-item-form" class="add-item-form hidden">
+            <h3 id="selected-item-name">Selected Item</h3>
+            <input type="hidden" id="selected-item-url">
+            
+            <!-- Recommended Prices Display -->
+            <div id="recommended-prices" class="recommended-prices hidden">
+              <div class="price-recommendation">
+                <span class="rec-label">💰 Recommended Sell:</span>
+                <span id="rec-sell-price" class="rec-value sell">—</span>
+              </div>
+              <div class="price-recommendation">
+                <span class="rec-label">💵 Recommended Buy:</span>
+                <span id="rec-buy-price" class="rec-value buy">—</span>
+              </div>
+              <button type="button" id="use-recommended-btn" class="btn btn-secondary btn-small">Use Recommended Prices</button>
+            </div>
+            
+            <div class="form-group">
+              <label for="item-quantity">Quantity</label>
+              <div class="quantity-control">
+                <button type="button" class="qty-btn" id="qty-decrease">−</button>
+                <input type="number" id="item-quantity" value="1" min="1" max="100" class="input-field qty-input">
+                <button type="button" class="qty-btn" id="qty-increase">+</button>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="min-sell-price">Min Sell Price (p)</label>
+              <input type="number" id="min-sell-price" placeholder="Optional" min="1" class="input-field">
+            </div>
+            
+            <div class="form-group">
+              <label for="max-buy-price">Max Buy Price (p)</label>
+              <input type="number" id="max-buy-price" placeholder="Optional" min="1" class="input-field">
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="auto-list-checkbox" checked>
+                <span>Auto-list at recommended price</span>
+              </label>
+            </div>
+            
+            <button type="button" id="add-item-btn" class="btn btn-success btn-full">Add to Inventory</button>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <h2>⚙️ Settings</h2>
+          <div class="form-group">
+            <label for="global-auto-list">Default Auto-List Quantity</label>
+            <input type="number" id="global-auto-list" value="1" min="1" max="100" class="input-field">
+          </div>
+        </div>
+      </aside>
+
+      <!-- Inventory List -->
+      <section class="inventory-section">
+        <div class="inventory-header">
+          <h2>📦 Inventory</h2>
+          <div class="inventory-stats">
+            <span id="total-items">0 items</span>
+            <span id="auto-sell-count">0 auto-sell</span>
+            <span id="auto-buy-count">0 auto-buy</span>
+          </div>
+        </div>
+        
+        <div id="inventory-list" class="inventory-list">
+          <div class="empty-state">
+            <p>No items in inventory</p>
+            <p class="hint">Search and add items using the panel on the left</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trade History Panel -->
+      <aside class="history-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>📜 Trade History</h2>
+            <div class="history-tabs">
+              <button class="tab-btn active" data-tab="all">All</button>
+              <button class="tab-btn" data-tab="sales">Sales</button>
+              <button class="tab-btn" data-tab="purchases">Buys</button>
+            </div>
+          </div>
+          
+          <div class="today-stats">
+            <div class="stat-item">
+              <span class="stat-label">Today's Trades:</span>
+              <span id="today-trades-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Today's Profit:</span>
+              <span id="today-profit" class="stat-value profit">0p</span>
+            </div>
+          </div>
+          
+          <div id="trade-history-list" class="trade-history-list">
+            <div class="empty-state small">
+              <p>No trades yet</p>
+            </div>
+          </div>
+          
+          <div class="history-actions">
+            <button id="record-sale-btn" class="btn btn-success btn-small">+ Record Sale</button>
+            <button id="record-buy-btn" class="btn btn-warning btn-small">+ Record Buy</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Warframe Trader Bot v1.0.0 | Market data from warframe.market</p>
+    </footer>
+  </div>
+
+  <!-- Item Card Template -->
+  <template id="item-card-template">
+    <div class="item-card" data-url-name="">
+      <div class="item-header">
+        <h3 class="item-name"></h3>
+        <div class="item-actions">
+          <button class="btn btn-icon btn-trending" title="View market trend">📈</button>
+          <button class="btn btn-icon btn-analyze" title="Analyze prices">📊</button>
+          <button class="btn btn-icon btn-apply-rec" title="Apply recommended prices">🎯</button>
+          <button class="btn btn-icon btn-remove" title="Remove item">🗑️</button>
+        </div>
+      </div>
+      
+      <div class="item-controls">
+        <div class="control-group">
+          <label>Quantity</label>
+          <div class="quantity-control">
+            <button type="button" class="qty-btn qty-dec">−</button>
+            <input type="number" class="input-field qty-input item-quantity" value="1" min="1" max="100">
+            <button type="button" class="qty-btn qty-inc">+</button>
+          </div>
+        </div>
+        
+        <div class="control-group">
+          <label>Min Sell</label>
+          <input type="number" class="input-field price-input min-sell" placeholder="—" min="1">
+        </div>
+        
+        <div class="control-group">
+          <label>Max Buy</label>
+          <input type="number" class="input-field price-input max-buy" placeholder="—" min="1">
+        </div>
+        
+        <div class="control-group toggle-group">
+          <label>Auto-Sell</label>
+          <label class="toggle">
+            <input type="checkbox" class="auto-sell-toggle">
+            <span class="toggle-slider sell-slider"></span>
+          </label>
+        </div>
+        
+        <div class="control-group toggle-group">
+          <label>Auto-Buy</label>
+          <label class="toggle">
+            <input type="checkbox" class="auto-buy-toggle">
+            <span class="toggle-slider buy-slider"></span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Trending indicator -->
+      <div class="item-trending hidden">
+        <span class="trending-icon">📈</span>
+        <span class="trending-text">Stable</span>
+        <span class="trending-change">0%</span>
+      </div>
+      
+      <div class="item-prices hidden">
+        <div class="market-prices">
+          <span class="price-label">Market:</span>
+          <span class="lowest-sell">—</span>
+          <span class="price-separator">/</span>
+          <span class="highest-buy">—</span>
+        </div>
+        <div class="recommended-tag">
+          <span class="rec-label">Rec. Sell:</span>
+          <span class="rec-sell">—</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>🗑️ Confirm Delete</h3>
+        <button class="btn-close" id="close-confirm-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message">Are you sure you want to remove this item?</p>
+        <input type="hidden" id="confirm-item-url">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-confirm">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Record Trade Modal -->
+  <div id="record-trade-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="record-trade-title">📝 Record Trade</h3>
+        <button class="btn-close" id="close-record-trade-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="trade-type" value="sell">
+        <div class="form-group">
+          <label for="trade-item-search">Item Name</label>
+          <input type="text" id="trade-item-search" placeholder="Search for item..." class="input-field">
+          <div id="trade-item-results" class="search-results hidden"></div>
+          <input type="hidden" id="trade-item-url">
+          <input type="hidden" id="trade-item-name">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="trade-quantity">Quantity</label>
+            <input type="number" id="trade-quantity" value="1" min="1" max="100" class="input-field">
+          </div>
+          <div class="form-group">
+            <label for="trade-price">Price (p)</label>
+            <input type="number" id="trade-price" min="1" class="input-field" placeholder="e.g. 50">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="trade-partner">Player Name (optional)</label>
+          <input type="text" id="trade-partner" placeholder="IGN of trade partner" class="input-field">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-record-trade">Cancel</button>
+        <button class="btn btn-success" id="submit-record-trade">Record Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trending Modal -->
+  <div id="trending-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📈 Market Trend</h3>
+        <button class="btn-close" id="close-trending-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 id="trending-item-name">Item Name</h4>
+        <div class="trending-summary">
+          <div class="trend-indicator">
+            <span id="trend-icon" class="trend-emoji">📊</span>
+            <span id="trend-text" class="trend-status">Loading...</span>
+          </div>
+          <div class="trend-change">
+            <span id="trend-change-value">0%</span>
+            <span class="trend-period">vs last week</span>
+          </div>
+        </div>
+        <div class="trending-stats">
+          <div class="trend-stat">
+            <span class="stat-label">Recent Avg:</span>
+            <span id="trend-recent-avg" class="stat-value">—</span>
+          </div>
+          <div class="trend-stat">
+            <span class="stat-label">Previous Avg:</span>
+            <span id="trend-previous-avg" class="stat-value">—</span>
+          </div>
+          <div class="trend-stat">
+            <span class="stat-label">7-Day Volume:</span>
+            <span id="trend-volume" class="stat-value">—</span>
+          </div>
+        </div>
+        <div id="trend-history" class="trend-history">
+          <h5>7-Day Price History</h5>
+          <div id="trend-history-bars" class="history-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trade History Entry Template -->
+  <template id="trade-entry-template">
+    <div class="trade-entry" data-trade-id="">
+      <div class="trade-icon"></div>
+      <div class="trade-details">
+        <span class="trade-item-name"></span>
+        <span class="trade-meta"></span>
+      </div>
+      <div class="trade-value"></div>
+    </div>
+  </template>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
